@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AE-圣诞树</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { 
+            width: 100%; height: 100%; 
+            overflow: hidden; 
+            background: #000; 
+        }
+        #video1 {
+            width: 100vw; height: 100vh;
+            object-fit: cover;
+            display: block;
+            z-index: 1;
+        }
+        /* 文字容器：兼容单个切换 + 全部一起显示 */
+        .greeting-container {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            width: 90%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem; /* 文字间距，更美观 */
+        }
+        /* 单个文字样式（通用） */
+        .greeting-item {
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 900;
+            background: radial-gradient(circle, #FFFFFF, #F0F8FF, #E6F7FF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 
+                0 0 8px #FFFFFF,
+                0 0 16px #FFFFFF,
+                0 0 24px #ADD8E6,
+                0 0 32px #ADD8E6;
+            opacity: 0;
+            filter: blur(10px);
+            transform: scale(0.8) translateY(20px);
+            transform-origin: center;
+        }
+        /* 出场动画：丝滑的缩放+淡入+模糊消除 */
+        @keyframes textFadeIn {
+            0% { 
+                opacity: 0; 
+                filter: blur(10px); 
+                transform: scale(0.8) translateY(20px); 
+            }
+            50% { 
+                opacity: 1; 
+                filter: blur(0); 
+                transform: scale(1.05) translateY(0); 
+            }
+            100% { 
+                opacity: 1; 
+                filter: blur(0); 
+                transform: scale(1) translateY(0); 
+            }
+        }
+        /* 退场动画：快速淡出 */
+        @keyframes textFadeOut {
+            0% { 
+                opacity: 1; 
+                filter: blur(0); 
+                transform: scale(1) translateY(0); 
+            }
+            100% { 
+                opacity: 0; 
+                filter: blur(10px); 
+                transform: scale(0.9) translateY(10px); 
+            }
+        }
+        .animate-in {
+            animation: textFadeIn 2s ease-in-out forwards;
+        }
+        .animate-out {
+            animation: textFadeOut 0.8s ease-in-out forwards;
+        }
+        .error-tip {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: red; font-size: 20px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <video id="video1" muted>
+        <source src="2.mp4" type="video/mp4">
+        <div class="error-tip">❌ 视频文件错误，请检查路径</div>
+    </video>
+
+    <!-- 文字容器 -->
+    <div class="greeting-container" id="greetingContainer"></div>
+
+    <audio id="music1" loop preload="auto">
+        <source src="1.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const video = document.getElementById('video1');
+        const container = document.getElementById('greetingContainer');
+        const audio = document.getElementById('music1');
+        // 文字列表
+        const textList = [
+            '亲爱的小钰',
+            '圣诞快乐',
+            '祝你',
+            '天天开心',
+            '所愿',
+            '皆所成'
+        ];
+        let currentIndex = 0;
+        let isAllShow = false; // 是否进入全部显示阶段
+
+        // 视频无限循环
+        video.loop = true;
+
+        // 创建单个文字元素的工具函数
+        function createTextItem(text) {
+            const item = document.createElement('div');
+            item.className = 'greeting-item';
+            item.innerText = text;
+            return item;
+        }
+
+        // 单个文字切换逻辑（出场→退场→下一个）
+        function switchText() {
+            if (currentIndex >= textList.length || isAllShow) return;
+
+            // 创建当前文字并清空容器（替换效果）
+            const currentItem = createTextItem(textList[currentIndex]);
+            container.innerHTML = '';
+            container.appendChild(currentItem);
+            
+            // 触发出场动画
+            currentItem.classList.add('animate-in');
+
+            // 监听出场动画结束
+            currentItem.addEventListener('animationend', function handler(e) {
+                if (e.animationName !== 'textFadeIn') return;
+
+                // 最后一个文字：停留1秒后显示所有文字
+                if (currentIndex === textList.length - 1) {
+                    setTimeout(showAllTexts, 1000);
+                    isAllShow = true;
+                    return;
+                }
+
+                // 非最后一个：触发退场动画
+                currentItem.classList.remove('animate-in');
+                currentItem.classList.add('animate-out');
+
+                // 退场后切换下一个
+                currentItem.addEventListener('animationend', function outHandler(e) {
+                    if (e.animationName !== 'textFadeOut') return;
+                    currentIndex++;
+                    setTimeout(switchText, 300); // 300ms过渡间隔
+                }, { once: true });
+            }, { once: true });
+        }
+
+        // 最后阶段：所有文字同时出场
+        function showAllTexts() {
+            container.innerHTML = ''; // 清空单个文字
+            // 批量创建所有文字元素
+            const allItems = textList.map(text => createTextItem(text));
+            allItems.forEach(item => container.appendChild(item));
+            // 所有文字同时触发出场动画（无延迟）
+            setTimeout(() => {
+                allItems.forEach(item => item.classList.add('animate-in'));
+            }, 100);
+        }
+
+        // 点击触发：第一个文字延迟1.5秒出场（可自行调整这个数值）
+        document.body.addEventListener('click', () => {
+            video.play();
+            audio.play().catch(() => alert('请点击授权音频播放'));
+            // 核心修改：延迟1.5秒启动第一个文字（数值可改，比如2000=2秒）
+            setTimeout(switchText, 1500); 
+        }, { once: true });
+
+        // 兜底逻辑：10秒后强制启动
+        setTimeout(() => {
+            if (currentIndex === 0 && !isAllShow) {
+                setTimeout(switchText, 1500);
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
